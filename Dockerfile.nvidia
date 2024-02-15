@@ -21,7 +21,7 @@ COPY requirements.txt /app/
 RUN pip install -r /app/requirements.txt
 
 # Copy the rest of your application into the container
-COPY . /app
+COPY ./backend /app
 
 
 # Expose the port FastAPI will run on
