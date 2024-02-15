@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  cuda-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.nvidia
+    volumes:
+      - ./storage:/storage
+    ports:
+      - "8000:8000"
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: 1
+            capabilities: [gpu]
