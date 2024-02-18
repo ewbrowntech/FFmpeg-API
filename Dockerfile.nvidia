@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     python3 \
     python3-pip \
+    libnvidia-decode-525-server \
+    nvidia-docker2 \
     && rm -rf /var/lib/apt/lists/*
 
 # Reset DEBIAN_FRONTEND for future docker run invocations
@@ -21,10 +23,10 @@ COPY requirements.txt /app/
 RUN pip install -r /app/requirements.txt
 
 # Copy the rest of your application into the container
-COPY ./backend /app
-
+COPY ./backend .
+COPY ./input.mp4 .
 
 # Expose the port FastAPI will run on
 EXPOSE 8000
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0"]
+CMD ["ffmpeg", "-y", "-vsync", "0", "-hwaccel", "cuda", "-hwaccel_output_format", "cuda", "-i", "input.mp4", "-c:a", "copy", "-c:v", "h264_nvenc", "-b:v", "5M", "output.mp4"]

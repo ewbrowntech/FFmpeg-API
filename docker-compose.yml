@@ -4,7 +4,7 @@ services:
   cuda-service:
     build:
       context: .
-      dockerfile: Dockerfile.nvidia
+      dockerfile: Dockerfile
     volumes:
       - ./storage:/storage
     ports:
