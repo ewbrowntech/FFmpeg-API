@@ -34,3 +34,11 @@ async def merge():
     Merge an audio and video stream into one multimedia stream
     """
     return "Merge"
+
+
+@app.get("/codec")
+async def get_codec():
+    """
+    Return the codec of a supplied video
+    """
+    return "Codec"
