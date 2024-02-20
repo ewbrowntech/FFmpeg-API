@@ -10,9 +10,36 @@ All rights reserved. This file is part of the FFmpeg-API project and is released
 the MIT License. See the LICENSE file for more details.
 """
 
-from fastapi import FastAPI
+import os
+import logging
+import docker
+from docker.types import Mount
+from fastapi import (
+    FastAPI,
+    APIRouter,
+    Request,
+    Response,
+    Depends,
+    File,
+    UploadFile,
+    HTTPException,
+)
 
 app = FastAPI()
+
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+
+# Get the Docker socket
+client = docker.from_env()
+
+# Bind storage volume
+mounts = [Mount(target="/storage", source=os.environ.get("STORAGE_PATH"), type="bind")]
 
 
 @app.get("/")
@@ -20,8 +47,8 @@ async def hello_world():
     return "Hello, world!"
 
 
-@app.post("/transcode")
-async def transcode():
+@app.post("/transcode", status_code=200)
+async def transcode(file: UploadFile = File(...)):
     """
     Transcode an audio or video stream
     """

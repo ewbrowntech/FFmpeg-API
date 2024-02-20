@@ -1,0 +1,27 @@
+FROM python:3.11
+
+# Set the working directory of the application
+WORKDIR /app
+
+# Install FFmpeg
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean 
+
+# Install Poetry for dependency management
+RUN pip install poetry
+
+# Install dependencies using Poetry
+COPY pyproject.toml poetry.lock* /app/
+RUN poetry config virtualenvs.create false \
+    && poetry install
+
+# Copy the rest of your application into the container
+COPY ./backend /app
+
+# Expose the port FastAPI will run on
+EXPOSE 8000
+
+# Run the FastAPI application
+CMD ["bash"]
