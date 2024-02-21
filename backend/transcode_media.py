@@ -15,6 +15,7 @@ import docker
 from docker.types import Mount
 from get_media_type import get_media_type
 from get_codec import get_codec
+from run_container import run_container
 from exceptions import ArgumentError
 
 
@@ -42,14 +43,6 @@ async def transcode_media(
         vertical_resolution,
     )
 
-    # Get the Docker socket
-    client = docker.from_env()
-
-    # Bind storage volume
-    mounts = [
-        Mount(target="/storage", source=os.environ.get("STORAGE_PATH"), type="bind")
-    ]
-
     # Assemble the FFmpeg command
     ffmpeg_command = await build_ffmpeg_command(
         input_filepath,
@@ -63,18 +56,7 @@ async def transcode_media(
         vertical_resolution,
     )
 
-    container = client.containers.run(
-        image="linuxserver/ffmpeg",
-        command=ffmpeg_command,
-        runtime="nvidia",
-        mounts=mounts,
-        auto_remove=False,
-        detach=True,
-        tty=True,  # Corresponds to -t in Docker CLI (allocates a pseudo-TTY)
-    )
-
-    for line in container.logs(stream=True, follow=True):
-        print(line.decode("utf-8", errors="ignore"), end="")
+    await run_container(ffmpeg_command)
 
     return
 
