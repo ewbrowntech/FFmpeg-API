@@ -10,6 +10,47 @@ All rights reserved. This file is part of the Atto-Host project and is released 
 the MIT License. See the LICENSE file for more details.
 """
 
+import os
+import docker
+from docker.types import Mount
 
-async def transcode_media(filepath: str, codec: str):
+
+async def transcode_media(
+    input_filepath: str, output_filepath: str, codec: str, hardware_encoder: str = None
+):
+    # Get the Docker socket
+    client = docker.from_env()
+
+    # Bind storage volume
+    mounts = [
+        Mount(target="/storage", source=os.environ.get("STORAGE_PATH"), type="bind")
+    ]
+
+    ffmpeg_command = [
+        "-i",
+        input_filepath,
+        "-c:v",
+        codec,
+        "-b:v",
+        "4M",
+        "-vf",
+        "scale=1280:720",
+        "-c:a",
+        "copy",
+        output_filepath,
+    ]
+
+    container = client.containers.run(
+        image="linuxserver/ffmpeg",
+        command=ffmpeg_command,
+        runtime="nvidia",
+        mounts=mounts,
+        auto_remove=False,
+        detach=True,
+        tty=True,  # Corresponds to -t in Docker CLI (allocates a pseudo-TTY)
+    )
+
+    for line in container.logs(stream=True, follow=True):
+        print(line.decode("utf-8", errors="ignore"), end="")
+
     return

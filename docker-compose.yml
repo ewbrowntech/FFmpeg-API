@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  cuda-service:
+  backend:
     env_file:
       .env
     build: .
