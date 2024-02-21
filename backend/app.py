@@ -70,7 +70,7 @@ async def transcode(background_tasks: BackgroundTasks, file: UploadFile = File(.
     with open(input_filepath, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     output_filepath = os.path.join("/storage", f"{file_id}.{extension}")
-    await transcode_media(input_filepath, output_filepath, codec="h264_nvenc")
+    await transcode_media(input_filepath, output_filepath, video_codec="h264_nvenc")
     background_tasks.add_task(remove_file, input_filepath)
     background_tasks.add_task(remove_file, output_filepath)
     return FileResponse(

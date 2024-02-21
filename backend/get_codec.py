@@ -11,9 +11,17 @@ the MIT License. See the LICENSE file for more details.
 """
 
 import ffmpeg
+from get_media_type import get_media_type
 
 
 async def get_codec(filepath):
     info = ffmpeg.probe(filepath)
-    videoStream = next(s for s in info["streams"] if s["codec_type"] == "video")
-    return videoStream["codec_name"]
+    media_type = await get_media_type(filepath)
+    result = {}
+    if media_type == "Multimedia" or media_type == "Audio":
+        audio_stream = next(s for s in info["streams"] if s["codec_type"] == "audio")
+        result["audio"] = audio_stream["codec_name"]
+    if media_type == "Multimedia" or media_type == "Video":
+        video_stream = next(s for s in info["streams"] if s["codec_type"] == "video")
+        result["video"] = video_stream["codec_name"]
+    return result
