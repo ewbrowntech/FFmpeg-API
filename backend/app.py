@@ -29,6 +29,8 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse
 from transcode_media import transcode_media
+from get_codec import get_codec
+from get_media_type import get_media_type
 
 app = FastAPI()
 
@@ -85,9 +87,33 @@ async def merge():
     return "Merge"
 
 
-@app.get("/codec")
-async def get_codec():
+@app.get("/codec", status_code=200)
+async def codec(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     """
-    Return the codec of a supplied video
+    Return the codec of a supplied file
     """
-    return "Codec"
+    file_id = secrets.token_hex(4)
+    extension = file.filename.split(".")[-1]
+    input_filepath = os.path.join("/storage", f"{file_id}-input.{extension}")
+    # Save the file to the storage directory
+    with open(input_filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    codec = await get_codec(input_filepath)
+    background_tasks.add_task(remove_file, input_filepath)
+    return codec
+
+
+@app.get("/media-type", status_code=200)
+async def media_type(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    """
+    Return the media type of a supplied file
+    """
+    file_id = secrets.token_hex(4)
+    extension = file.filename.split(".")[-1]
+    input_filepath = os.path.join("/storage", f"{file_id}-input.{extension}")
+    # Save the file to the storage directory
+    with open(input_filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    media_type = await get_media_type(input_filepath)
+    background_tasks.add_task(remove_file, input_filepath)
+    return media_type

@@ -25,21 +25,15 @@ async def transcode_media(
     mounts = [
         Mount(target="/storage", source=os.environ.get("STORAGE_PATH"), type="bind")
     ]
-    ffmpeg_command = 
+
+    # Assemble the FFmpeg command
     ffmpeg_command = [
         "-i",
         input_filepath,
         "-c:v",
         codec,
     ]
-        "-b:v",
-        "4M",
-        "-vf",
-        "scale=1280:720",
-        "-c:a",
-        "copy",
-        output_filepath,
-    ]
+    ffmpeg_command.append(output_filepath)
 
     container = client.containers.run(
         image="linuxserver/ffmpeg",
