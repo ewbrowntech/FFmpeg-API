@@ -15,3 +15,10 @@ class ArgumentError(Exception):
     def __init__(self, message):
         self.message = message
         super().__init__(message)
+
+
+class NotAVideoError(Exception):
+    def __init__(self, filepath):
+        message = f"The file {filepath} does not contain any video"
+        self.message = message
+        super().__init__(message)
