@@ -28,6 +28,6 @@ async def get_resolution(input_filepath):
     ]
     resolution = {
         "horizontal": video_streams[0]["width"],
-        "vertical": video_streams[0]["heigh"],
+        "vertical": video_streams[0]["height"],
     }
     return resolution
