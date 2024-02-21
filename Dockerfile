@@ -3,6 +3,12 @@ FROM python:3.11
 # Set the working directory of the application
 WORKDIR /backend
 
+# Install FFmpeg for probing
+RUN apt-get install -y \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
 # Install Poetry for dependency management
 RUN pip install poetry
 

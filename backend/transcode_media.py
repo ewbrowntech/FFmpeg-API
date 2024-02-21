@@ -6,7 +6,7 @@ transcode_media.py
 Transcode a piece of media into a different codec
 
 Copyright (C) 2024 by Ethan Brown
-All rights reserved. This file is part of the Atto-Host project and is released under
+All rights reserved. This file is part of the FFmpeg-API project and is released under
 the MIT License. See the LICENSE file for more details.
 """
 
@@ -25,12 +25,13 @@ async def transcode_media(
     mounts = [
         Mount(target="/storage", source=os.environ.get("STORAGE_PATH"), type="bind")
     ]
-
+    ffmpeg_command = 
     ffmpeg_command = [
         "-i",
         input_filepath,
         "-c:v",
         codec,
+    ]
         "-b:v",
         "4M",
         "-vf",
