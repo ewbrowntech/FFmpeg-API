@@ -26,6 +26,8 @@ async def transcode_media(
     hardware_encoder: str = None,
     video_bitrate: str = None,
     audio_bitrate: str = None,
+    horizontal_resolution: int = None,
+    vertical_resolution: int = None,
 ):
     # Validate the supplied arguments
     await validate_arguments(
@@ -36,6 +38,8 @@ async def transcode_media(
         hardware_encoder,
         video_bitrate,
         audio_bitrate,
+        horizontal_resolution,
+        vertical_resolution,
     )
 
     # Get the Docker socket
@@ -55,6 +59,8 @@ async def transcode_media(
         hardware_encoder,
         video_bitrate,
         audio_bitrate,
+        horizontal_resolution,
+        vertical_resolution,
     )
 
     container = client.containers.run(
@@ -81,6 +87,8 @@ async def build_ffmpeg_command(
     hardware_encoder: str,
     video_bitrate: str,
     audio_bitrate: str,
+    horizontal_resolution: int,
+    vertical_resolution: int,
 ):
     # Add the input filepath
     ffmpeg_command = [
@@ -95,13 +103,22 @@ async def build_ffmpeg_command(
     else:
         ffmpeg_command.append("copy")
 
-    # select the appropriate video and/or audio bitrates
+    # Select the appropriate video and/or audio bitrates
     if video_bitrate:
         ffmpeg_command.append("-b:v")
         ffmpeg_command.append(video_bitrate)
     if audio_bitrate:
         ffmpeg_command.append("-b:a")
         ffmpeg_command.append(audio_bitrate)
+
+    # Select the appropriate scaling. If only one of the two resolutions is supplied, set the other to -1 to maintain aspect ratio.
+    if horizontal_resolution and not vertical_resolution:
+        vertical_resolution = "-1"
+    if vertical_resolution and not horizontal_resolution:
+        horizontal_resolution = "-1"
+    if horizontal_resolution and vertical_resolution:
+        ffmpeg_command.append("-vf")
+        ffmpeg_command.append(f"scale={horizontal_resolution}:{vertical_resolution}")
 
     # Select the appropriate audio codec
     ffmpeg_command.append("-c:a")
@@ -112,7 +129,6 @@ async def build_ffmpeg_command(
 
     # Add the output filepath
     ffmpeg_command.append(output_filepath)
-
     return ffmpeg_command
 
 
@@ -124,6 +140,8 @@ async def validate_arguments(
     hardware_encoder: str,
     video_bitrate: str,
     audio_bitrate: str,
+    horizontal_resolution: int,
+    vertical_resolution: int,
 ):
     # Validate that the input file exists and is a directory
     if not os.path.exists(input_filepath):
@@ -152,3 +170,25 @@ async def validate_arguments(
                 raise ArgumentError(
                     "Arguments 'audio_codec' and 'audio_bitrate' may not be used for a video file"
                 )
+
+    # Validate the horizontal and vertical resolutions
+    if horizontal_resolution:
+        if type(horizontal_resolution) != int:
+            raise TypeError(
+                f"Argument horizontal_resolution must be an integer, got {type(horizontal_resolution)}"
+            )
+        if horizontal_resolution < 1:
+            raise ValueError(
+                f"Horizontal resolution must be an integer >= 1, got {horizontal_resolution}"
+            )
+
+    if vertical_resolution:
+        print(f"vertical resolution: {vertical_resolution}")
+        if type(vertical_resolution) != int:
+            raise TypeError(
+                f"Argument horizontal_resolution must be an integer, got {type(vertical_resolution)}"
+            )
+        if vertical_resolution < 1:
+            raise ValueError(
+                f"Vertical resolution must be an integer >= 1, got {vertical_resolution}"
+            )
