@@ -17,3 +17,7 @@ This will open a container with a BASH CLI. To perform the test suite, run:
 To exit the testing environment container, simply run:
 
     exit
+
+## Hardware Acceleration 
+
+Check the table below to determine if hardware acceleration is available on your system.
