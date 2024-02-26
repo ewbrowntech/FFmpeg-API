@@ -29,6 +29,7 @@ from fastapi import (
 )
 from fastapi.responses import FileResponse
 from transcode_media import transcode_media
+from merge_multimedia import merge_multimedia
 from get_codec import get_codec
 from get_media_type import get_media_type
 from get_resolution import get_resolution
@@ -82,11 +83,51 @@ async def transcode(background_tasks: BackgroundTasks, file: UploadFile = File(.
 
 
 @app.post("/merge")
-async def merge():
+async def merge(
+    background_tasks: BackgroundTasks,
+    audio: UploadFile = File(...),
+    video: UploadFile = File(...),
+    audio_codec: str = None,
+    video_codec: str = None,
+    extension: str = None,
+):
     """
     Merge an audio and video stream into one multimedia stream
     """
-    return "Merge"
+    # Ingest the audio file
+    audio_file_id = secrets.token_hex(4)
+    audio_extension = audio.filename.split(".")[-1]
+    audio_filepath = os.path.join(
+        "/storage", f"{audio_file_id}-input.{audio_extension}"
+    )
+    with open(audio_filepath, "wb") as buffer:
+        shutil.copyfileobj(audio.file, buffer)
+
+    # Ingest the video file
+    video_file_id = secrets.token_hex(4)
+    video_extension = video.filename.split(".")[-1]
+    video_filepath = os.path.join(
+        "/storage", f"{video_file_id}-input.{video_extension}"
+    )
+    with open(video_filepath, "wb") as buffer:
+        shutil.copyfileobj(video.file, buffer)
+
+    # Set the output path
+    output_file_id = secrets.token_hex(4)
+    if extension is None:
+        extension = video_extension
+    output_filepath = os.path.join("/storage", f"{output_file_id}.{extension}")
+
+    # Remove the files
+    background_tasks.add_task(remove_file, audio_filepath)
+    background_tasks.add_task(remove_file, video_filepath)
+    # background_tasks.add_task(remove_file, output_filepath)
+
+    return {
+        "audio_codec": audio_codec,
+        "video_codec": video_codec,
+        "extension": extension,
+    }
 
 
 @app.get("/codec", status_code=200)
