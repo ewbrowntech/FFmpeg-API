@@ -118,6 +118,15 @@ async def merge(
         extension = video_extension
     output_filepath = os.path.join("/storage", f"{output_file_id}.{extension}")
 
+    # Use FFmpeg to merge the supplied files together
+    await merge_multimedia(
+        audio_filepath,
+        video_filepath,
+        output_filepath,
+        video_codec="vp9",
+        hardware_encoder="vaapi",
+    )
+
     # Remove the files
     background_tasks.add_task(remove_file, audio_filepath)
     background_tasks.add_task(remove_file, video_filepath)

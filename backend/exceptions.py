@@ -22,3 +22,10 @@ class NotAVideoError(Exception):
         message = f"The file {filepath} does not contain any video"
         self.message = message
         super().__init__(message)
+
+
+class InvalidEncoderError(Exception):
+    def __init__(self, encoder):
+        message = f"The requested encoder, {encoder}, is not available. Choose from nvenc (Nvidia), vaapi (AMD), or qsv (Intel)"
+        self.message = message
+        super().__init__(message)
