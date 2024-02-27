@@ -123,20 +123,19 @@ async def merge(
         audio_filepath,
         video_filepath,
         output_filepath,
-        video_codec="vp9",
+        video_codec="h264",
         hardware_encoder="vaapi",
     )
 
     # Remove the files
     background_tasks.add_task(remove_file, audio_filepath)
     background_tasks.add_task(remove_file, video_filepath)
-    # background_tasks.add_task(remove_file, output_filepath)
+    background_tasks.add_task(remove_file, output_filepath)
 
-    return {
-        "audio_codec": audio_codec,
-        "video_codec": video_codec,
-        "extension": extension,
-    }
+    return FileResponse(
+        path=output_filepath,
+        filename=video.filename,
+    )
 
 
 @app.get("/codec", status_code=200)

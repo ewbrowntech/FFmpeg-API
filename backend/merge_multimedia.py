@@ -13,6 +13,7 @@ the MIT License. See the LICENSE file for more details.
 import os
 from get_codec import get_codec
 from get_media_type import get_media_type
+from run_container import run_container
 from exceptions import ArgumentError, InvalidEncoderError
 
 
@@ -47,6 +48,7 @@ async def merge_multimedia(
     ):
         raise InvalidEncoderError(hardware_encoder)
 
+    # Assemble the FFmpeg command
     ffmpeg_command = await build_ffmpeg_command(
         audio_filepath,
         video_filepath,
@@ -57,8 +59,11 @@ async def merge_multimedia(
         video_bitrate,
         audio_bitrate,
     )
-    print(ffmpeg_command)
-    pass
+
+    # Run the command in the linuxserver.io FFmpeg image
+    await run_container(ffmpeg_command)
+
+    return
 
 
 async def build_ffmpeg_command(
@@ -71,8 +76,18 @@ async def build_ffmpeg_command(
     video_bitrate: str,
     audio_bitrate: str,
 ):
-    # Add the input filepath
-    ffmpeg_command = ["-i", audio_filepath, "-i", video_filepath]
+    ffmpeg_command = []
+    if hardware_encoder == "vaapi":
+        ffmpeg_command.append("-vaapi_device")
+        ffmpeg_command.append("/dev/dri/renderD128")
+
+    # Add the audio filepath
+    ffmpeg_command.append("-i")
+    ffmpeg_command.append(audio_filepath)
+
+    # Add the video filepath
+    ffmpeg_command.append("-i")
+    ffmpeg_command.append(video_filepath)
 
     # Select the appropriate video codec
     if video_codec is None:

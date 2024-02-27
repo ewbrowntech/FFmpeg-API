@@ -45,6 +45,7 @@ async def run_container(ffmpeg_command):
         print("VAAPI (AMD) encoder selected")
         params["devices"] = ["/dev/dri:/dev/dri"]
 
+    print(params)
     container = client.containers.run(**params)
 
     for line in container.logs(stream=True, follow=True):
