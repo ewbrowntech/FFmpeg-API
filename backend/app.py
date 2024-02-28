@@ -88,7 +88,7 @@ async def merge(
     audio: UploadFile = File(...),
     video: UploadFile = File(...),
     audio_codec: str = None,
-    video_codec: str = None,
+    video_codec: str = "h264",
     extension: str = None,
 ):
     """
@@ -123,7 +123,7 @@ async def merge(
         audio_filepath,
         video_filepath,
         output_filepath,
-        video_codec="h264",
+        video_codec=video_codec,
         hardware_encoder="vaapi",
     )
 
