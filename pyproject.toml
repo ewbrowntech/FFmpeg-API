@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "ffmpeg-api"
+name = "backend"
 version = "0.1.0"
 description = ""
 authors = ["Ethan Brown <ethan@ewbrowntech.com>"]

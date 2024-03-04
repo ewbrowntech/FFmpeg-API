@@ -1,0 +1,7 @@
+{
+    "hardware_encoders": [
+        "nvenc",
+        "vaapi",
+        "qsv"
+    ]
+}

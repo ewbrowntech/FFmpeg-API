@@ -20,10 +20,11 @@ RUN poetry config virtualenvs.create false \
 COPY ./backend /backend
 
 # Copy the configuration file into the container
+RUN mkdir /config
 COPY ./config.json /config
 
 # Expose the port FastAPI will run on
 EXPOSE 8000
 
 # Run the FastAPI application
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0"]
+CMD ["python", "main.py"]
