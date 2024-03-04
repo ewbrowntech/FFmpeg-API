@@ -15,7 +15,7 @@ import shutil
 import secrets
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File
 from routers.tasks import remove_file
-from get_codec import get_codec
+from ffmpeg_methods.get_codec import get_codec
 
 # Instantiate a new router
 router = APIRouter()
