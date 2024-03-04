@@ -11,7 +11,7 @@ the MIT License. See the LICENSE file for more details.
 """
 
 import ffmpeg
-from get_media_type import get_media_type
+from ffmpeg_methods.get_media_type import get_media_type
 
 
 async def get_codec(filepath):
