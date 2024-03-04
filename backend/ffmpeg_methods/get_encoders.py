@@ -13,9 +13,11 @@ the MIT License. See the LICENSE file for more details.
 import json
 from environment.get_config import get_config
 from docker_methods.generate_parameters import generate_parameters
+from docker_methods.run_container import run_container
 
 
-def get_encoders():
+async def get_encoders():
     config = get_config()
     parameters = generate_parameters(command="-encoders")
-    print(parameters)
+    response = await run_container(parameters)
+    print(response)

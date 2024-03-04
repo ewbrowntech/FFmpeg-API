@@ -13,13 +13,16 @@ the MIT License. See the LICENSE file for more details.
 import docker
 from docker.types import Mount
 from environment.get_hardware_encoder import get_hardware_encoder
+from environment.get_storage_directory import get_storage_directory
 
 
 def generate_parameters(command: str):
     params = {
         "image": "linuxserver/ffmpeg",
         "command": command,
-        "mounts": [Mount(target="/storage", source="/storage")],
+        "mounts": [
+            Mount(target="/storage", source=get_storage_directory(), type="bind")
+        ],
         "auto_remove": False,
         "detach": True,
         "tty": True,
