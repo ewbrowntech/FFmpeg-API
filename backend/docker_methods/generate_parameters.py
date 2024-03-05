@@ -1,38 +1,34 @@
 """
-run_container.py
+generate_parameters.py
 
 @Author: Ethan Brown - ethan@ewbrowntech.com
 
-Run the linuxserver/ffmpeg container
+Generate a set of parameters for running the linuxserver/ffmpeg image
 
 Copyright (C) 2024 by Ethan Brown
 All rights reserved. This file is part of the FFmpeg-API project and is released under
 the MIT License. See the LICENSE file for more details.
 """
 
-import os
 import docker
 from docker.types import Mount
+from environment.get_hardware_encoder import get_hardware_encoder
+from environment.get_storage_directory import get_storage_directory
 
 
-async def run_container(ffmpeg_command):
-    # Get the Docker socket
-    client = docker.from_env()
-
-    # Parameters for running the FFmpeg container
+def generate_parameters(command: str):
     params = {
         "image": "linuxserver/ffmpeg",
-        "command": ffmpeg_command,
+        "command": command,
         "mounts": [
-            Mount(target="/storage", source=os.environ.get("STORAGE_PATH"), type="bind")
+            Mount(target="/storage", source=get_storage_directory(), type="bind")
         ],
         "auto_remove": False,
         "detach": True,
         "tty": True,
     }
 
-    # Set the Nvidia runtime
-    hardware_encoder = os.environ.get("HARDWARE_ENCODER")
+    hardware_encoder = get_hardware_encoder()
     if not hardware_encoder:
         print("No hardware encoder specified")
     if hardware_encoder == "nvenc":
@@ -45,8 +41,4 @@ async def run_container(ffmpeg_command):
         print("VAAPI (AMD) encoder selected")
         params["devices"] = ["/dev/dri:/dev/dri"]
 
-    print(params)
-    container = client.containers.run(**params)
-
-    for line in container.logs(stream=True, follow=True):
-        print(line.decode("utf-8", errors="ignore"), end="")
+    return params

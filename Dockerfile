@@ -19,6 +19,10 @@ RUN poetry config virtualenvs.create false \
 # Copy the rest of your application into the container
 COPY ./backend /backend
 
+# Copy the configuration file into the container
+RUN mkdir /config
+COPY ./config.json /config
+
 # Expose the port FastAPI will run on
 EXPOSE 8000
 

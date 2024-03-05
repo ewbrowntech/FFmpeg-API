@@ -11,10 +11,16 @@ the MIT License. See the LICENSE file for more details.
 """
 
 import os
-from get_codec import get_codec
-from get_media_type import get_media_type
-from run_container import run_container
+import logging
+from ffmpeg_methods.get_codec import get_codec
+from ffmpeg_methods.get_media_type import get_media_type
+from environment.get_hardware_encoder import get_hardware_encoder
+from docker_methods.generate_parameters import generate_parameters
+from docker_methods.run_container import run_container
 from exceptions import ArgumentError, InvalidEncoderError
+
+
+logger = logging.getLogger(__name__)
 
 
 async def merge_multimedia(
@@ -23,7 +29,6 @@ async def merge_multimedia(
     output_filepath: str,
     video_codec: str = None,
     audio_codec: str = None,
-    hardware_encoder: str = None,
     video_bitrate: str = None,
     audio_bitrate: str = None,
 ):
@@ -40,14 +45,6 @@ async def merge_multimedia(
             f"{output_filepath} already exists and cannot be overwritten"
         )
 
-    # Validate the supplied hardware encoder
-    supported_hardware_encoders = ["nvenc", "vaapi", "qsv"]
-    if (
-        hardware_encoder is not None
-        and hardware_encoder not in supported_hardware_encoders
-    ):
-        raise InvalidEncoderError(hardware_encoder)
-
     # Assemble the FFmpeg command
     ffmpeg_command = await build_ffmpeg_command(
         audio_filepath,
@@ -55,14 +52,15 @@ async def merge_multimedia(
         output_filepath,
         video_codec,
         audio_codec,
-        hardware_encoder,
         video_bitrate,
         audio_bitrate,
     )
 
     # Run the command in the linuxserver.io FFmpeg image
-    await run_container(ffmpeg_command)
-
+    params = generate_parameters(ffmpeg_command)
+    response = await run_container(params)
+    for line in response:
+        logger.info(line)
     return
 
 
@@ -72,12 +70,14 @@ async def build_ffmpeg_command(
     output_filepath: str,
     video_codec: str,
     audio_codec: str,
-    hardware_encoder: str,
     video_bitrate: str,
     audio_bitrate: str,
 ):
+    """
+    Build an FFmpeg command to be used to transcode the supplied media
+    """
     ffmpeg_command = []
-    if hardware_encoder == "vaapi":
+    if get_hardware_encoder() == "vaapi":
         ffmpeg_command.append("-vaapi_device")
         ffmpeg_command.append("/dev/dri/renderD128")
 
@@ -90,21 +90,35 @@ async def build_ffmpeg_command(
     ffmpeg_command.append(video_filepath)
 
     # Select the appropriate video codec
-    if video_codec is None:
-        video_codec = get_codec(video_filepath)
-    # Use the hardware encoder if it is available
-    if hardware_encoder is not None:
-        video_codec += f"_{hardware_encoder}"
     ffmpeg_command.append("-c:v")
-    ffmpeg_command.append(video_codec)
+    if video_codec:
+        ffmpeg_command.append(video_codec)
+    else:
+        ffmpeg_command.append("copy")
 
     # Select the appropriate video and/or audio bitrates
     if video_bitrate:
         ffmpeg_command.append("-b:v")
-        ffmpeg_command.append(video_bitrate)
+        ffmpeg_command.append(str(video_bitrate) + "k")
     if audio_bitrate:
         ffmpeg_command.append("-b:a")
-        ffmpeg_command.append(audio_bitrate)
+        ffmpeg_command.append(str(audio_bitrate) + "k")
+
+    # If using the VAAPI encoder, add its formatting options
+    if get_hardware_encoder() == "vaapi":
+        ffmpeg_command.append("-vf")
+        ffmpeg_command.append("format=nv12|vaapi,hwupload")
+    else:
+        # Select the appropriate scaling. If only one of the two resolutions is supplied, set the other to -1 to maintain aspect ratio.
+        if horizontal_resolution and not vertical_resolution:
+            vertical_resolution = "-1"
+        if vertical_resolution and not horizontal_resolution:
+            horizontal_resolution = "-1"
+        if horizontal_resolution and vertical_resolution:
+            ffmpeg_command.append("-vf")
+            ffmpeg_command.append(
+                f"scale={horizontal_resolution}:{vertical_resolution}"
+            )
 
     # Select the appropriate audio codec
     ffmpeg_command.append("-c:a")
@@ -112,11 +126,6 @@ async def build_ffmpeg_command(
         ffmpeg_command.append(audio_codec)
     else:
         ffmpeg_command.append("copy")
-
-    # If using the VAAPI encoder, add its formatting options
-    if hardware_encoder == "vaapi":
-        ffmpeg_command.append("-vf")
-        ffmpeg_command.append("format=nv12|vaapi,hwupload")
 
     # Add the output filepath
     ffmpeg_command.append(output_filepath)
