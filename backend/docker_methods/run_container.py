@@ -32,6 +32,5 @@ async def run_container(params):
         # Check if there are newline characters indicating the end of a line
         while "\n" in line_buffer:
             line, line_buffer = line_buffer.split("\n", 1)
-            print(line)
             response.append(line)
     return response
