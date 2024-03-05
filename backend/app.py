@@ -14,10 +14,21 @@ import os
 import logging
 import docker
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 from routers.router import router
+from config import AVAILBLE_ENCODERS
+from ffmpeg_methods.get_encoders import get_encoders
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Getting the available encoders...")
+    AVAILBLE_ENCODERS.extend(await get_encoders())
+    yield
+
 
 # Initialize new FastAPI application
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # Use the included router
 app.include_router(router)
