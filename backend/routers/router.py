@@ -21,6 +21,7 @@ from routers.tasks import remove_file
 from exceptions import NotAVideoError
 from ffmpeg_methods.get_encoders import get_encoders
 from ffmpeg_methods.get_codec import get_codec
+from ffmpeg_methods.get_bitrate import get_bitrate
 from ffmpeg_methods.get_media_type import get_media_type
 from ffmpeg_methods.get_resolution import get_resolution
 from ffmpeg_methods.transcode_media import transcode_media
@@ -53,6 +54,22 @@ async def codec(background_tasks: BackgroundTasks, file: UploadFile = File(...))
     codec = await get_codec(input_filepath)
     background_tasks.add_task(remove_file, input_filepath)
     return codec
+
+
+@router.get("/bitrate", status_code=200)
+async def bitrate(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    """
+    Return the bitrate of a supplied file
+    """
+    file_id = secrets.token_hex(4)
+    extension = file.filename.split(".")[-1]
+    input_filepath = os.path.join("/storage", f"{file_id}-input.{extension}")
+    # Save the file to the storage directory
+    with open(input_filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    bitrate = await get_bitrate(input_filepath)
+    background_tasks.add_task(remove_file, input_filepath)
+    return bitrate
 
 
 @router.get("/media-type", status_code=200)
