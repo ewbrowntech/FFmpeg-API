@@ -15,10 +15,20 @@ import shutil
 import secrets
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File
 from routers.tasks import remove_file
+from ffmpeg_methods.get_encoders import get_encoders
 from ffmpeg_methods.get_codec import get_codec
 
 # Instantiate a new router
 router = APIRouter()
+
+
+@router.get("/encoders", status_code=200)
+async def encoders():
+    """
+    Return the available encoders
+    """
+    encoders = await get_encoders()
+    return {"encoders": encoders}
 
 
 @router.get("/codec", status_code=200)
