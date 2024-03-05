@@ -13,12 +13,14 @@ the MIT License. See the LICENSE file for more details.
 import os
 import shutil
 import secrets
-from fastapi import APIRouter, BackgroundTasks, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, UploadFile, File, HTTPException
 from config import AVAILBLE_ENCODERS
 from routers.tasks import remove_file
+from exceptions import NotAVideoError
 from ffmpeg_methods.get_encoders import get_encoders
 from ffmpeg_methods.get_codec import get_codec
 from ffmpeg_methods.get_media_type import get_media_type
+from ffmpeg_methods.get_resolution import get_resolution
 
 # Instantiate a new router
 router = APIRouter()
@@ -62,3 +64,26 @@ async def media_type(background_tasks: BackgroundTasks, file: UploadFile = File(
     media_type = await get_media_type(input_filepath)
     background_tasks.add_task(remove_file, input_filepath)
     return media_type
+
+
+@router.get("/resolution", status_code=200)
+async def resolution(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    """
+    Return the resolution of a supplied video or multimedia file
+    """
+    # Save the file to the storage directory
+    file_id = secrets.token_hex(4)
+    extension = file.filename.split(".")[-1]
+    input_filepath = os.path.join("/storage", f"{file_id}-input.{extension}")
+    with open(input_filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Get the resolution of the file
+    try:
+        resolution = await get_resolution(input_filepath)
+        return resolution
+    except NotAVideoError:
+        raise HTTPException(
+            status_code=400,
+            detail=f"The specified file, {file.filename}, does not contain any video",
+        )
