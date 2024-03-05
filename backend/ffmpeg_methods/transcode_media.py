@@ -93,10 +93,10 @@ async def build_ffmpeg_command(
     # Select the appropriate video and/or audio bitrates
     if video_bitrate:
         ffmpeg_command.append("-b:v")
-        ffmpeg_command.append(video_bitrate)
+        ffmpeg_command.append(str(video_bitrate) + "k")
     if audio_bitrate:
         ffmpeg_command.append("-b:a")
-        ffmpeg_command.append(audio_bitrate)
+        ffmpeg_command.append(str(audio_bitrate) + "k")
 
     # Select the appropriate scaling. If only one of the two resolutions is supplied, set the other to -1 to maintain aspect ratio.
     if horizontal_resolution and not vertical_resolution:
