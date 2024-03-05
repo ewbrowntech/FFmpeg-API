@@ -25,6 +25,7 @@ from ffmpeg_methods.get_bitrate import get_bitrate
 from ffmpeg_methods.get_media_type import get_media_type
 from ffmpeg_methods.get_resolution import get_resolution
 from ffmpeg_methods.transcode_media import transcode_media
+from ffmpeg_methods.merge_multimedia import merge_multimedia
 
 # Instantiate a new router
 router = APIRouter()
@@ -184,4 +185,87 @@ async def transcode(
     background_tasks.add_task(remove_file, output_filepath)
     return FileResponse(
         path=output_filepath, filename=f"{original_filename}.{extension}"
+    )
+
+
+@router.post("/merge", status_code=200)
+async def merge(
+    background_tasks: BackgroundTasks,
+    audio: UploadFile = File(...),
+    video: UploadFile = File(...),
+    audio_codec: str = None,
+    video_codec: str = None,
+    audio_bitrate: int = None,
+    video_bitrate: int = None,
+    extension: str = None,
+):
+    # Ingest the audio file
+    audio_file_id = secrets.token_hex(4)
+    audio_extension = audio.filename.split(".")[-1]
+    audio_filepath = os.path.join(
+        "/storage", f"{audio_file_id}-input.{audio_extension}"
+    )
+    with open(audio_filepath, "wb") as buffer:
+        shutil.copyfileobj(audio.file, buffer)
+
+    # Ingest the video file
+    video_file_id = secrets.token_hex(4)
+    video_extension = video.filename.split(".")[-1]
+    video_filepath = os.path.join(
+        "/storage", f"{video_file_id}-input.{video_extension}"
+    )
+    with open(video_filepath, "wb") as buffer:
+        shutil.copyfileobj(video.file, buffer)
+
+    # Set the output path
+    output_file_id = secrets.token_hex(4)
+    if extension is None:
+        extension = video_extension
+    output_filepath = os.path.join("/storage", f"{output_file_id}.{extension}")
+
+    # Verify that the requested video codec is available
+    if video_codec is not None:
+        video_codecs = [
+            encoder["name"]
+            for encoder in AVAILBLE_ENCODERS
+            if encoder["type"] == "video"
+        ]
+        if video_codec not in video_codecs:
+            raise HTTPException(
+                status_code=400,
+                detail=f"The requested video codec, {video_codec}, is not available.",
+            )
+
+    # Verify that the requested audio codec is available
+    if audio_codec is not None:
+        audio_codecs = [
+            encoder["name"]
+            for encoder in AVAILBLE_ENCODERS
+            if encoder["type"] == "audio"
+        ]
+        if audio_codec not in audio_codecs:
+            raise HTTPException(
+                status_code=400,
+                detail=f"The requested video codec, {audio_codec}, is not available.",
+            )
+
+    # Use FFmpeg to merge the supplied files together
+    await merge_multimedia(
+        audio_filepath,
+        video_filepath,
+        output_filepath,
+        audio_codec=audio_codec,
+        video_codec=video_codec,
+        audio_bitrate=audio_bitrate,
+        video_bitrate=video_bitrate,
+    )
+
+    # Remove the files
+    background_tasks.add_task(remove_file, audio_filepath)
+    background_tasks.add_task(remove_file, video_filepath)
+    background_tasks.add_task(remove_file, output_filepath)
+
+    return FileResponse(
+        path=output_filepath,
+        filename=video.filename,
     )

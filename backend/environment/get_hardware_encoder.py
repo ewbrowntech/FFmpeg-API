@@ -16,6 +16,8 @@ from environment.get_config import get_config
 
 def get_hardware_encoder():
     hardware_encoder = os.environ.get("HARDWARE_ENCODER")
+    if hardware_encoder is None:
+        return hardware_encoder
 
     # Verify that the requested hardware encoder is implemented on the system
     config = get_config()

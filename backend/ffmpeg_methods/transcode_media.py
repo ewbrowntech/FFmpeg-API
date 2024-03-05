@@ -15,6 +15,7 @@ import logging
 from ffmpeg_methods.get_media_type import get_media_type
 from ffmpeg_methods.get_codec import get_codec
 from exceptions import ArgumentError
+from environment.get_hardware_encoder import get_hardware_encoder
 from docker_methods.generate_parameters import generate_parameters
 from docker_methods.run_container import run_container
 
@@ -77,11 +78,14 @@ async def build_ffmpeg_command(
     """
     Build an FFmpeg command to be used to transcode the supplied media
     """
+    ffmpeg_command = []
+    if get_hardware_encoder() == "vaapi":
+        ffmpeg_command.append("-vaapi_device")
+        ffmpeg_command.append("/dev/dri/renderD128")
+
     # Add the input filepath
-    ffmpeg_command = [
-        "-i",
-        input_filepath,
-    ]
+    ffmpeg_command.append("-i")
+    ffmpeg_command.append(input_filepath)
 
     # Select the appropriate video codec
     ffmpeg_command.append("-c:v")
@@ -98,14 +102,21 @@ async def build_ffmpeg_command(
         ffmpeg_command.append("-b:a")
         ffmpeg_command.append(str(audio_bitrate) + "k")
 
-    # Select the appropriate scaling. If only one of the two resolutions is supplied, set the other to -1 to maintain aspect ratio.
-    if horizontal_resolution and not vertical_resolution:
-        vertical_resolution = "-1"
-    if vertical_resolution and not horizontal_resolution:
-        horizontal_resolution = "-1"
-    if horizontal_resolution and vertical_resolution:
+    # If using the VAAPI encoder, add its formatting options
+    if get_hardware_encoder() == "vaapi":
         ffmpeg_command.append("-vf")
-        ffmpeg_command.append(f"scale={horizontal_resolution}:{vertical_resolution}")
+        ffmpeg_command.append("format=nv12|vaapi,hwupload")
+    else:
+        # Select the appropriate scaling. If only one of the two resolutions is supplied, set the other to -1 to maintain aspect ratio.
+        if horizontal_resolution and not vertical_resolution:
+            vertical_resolution = "-1"
+        if vertical_resolution and not horizontal_resolution:
+            horizontal_resolution = "-1"
+        if horizontal_resolution and vertical_resolution:
+            ffmpeg_command.append("-vf")
+            ffmpeg_command.append(
+                f"scale={horizontal_resolution}:{vertical_resolution}"
+            )
 
     # Select the appropriate audio codec
     ffmpeg_command.append("-c:a")
