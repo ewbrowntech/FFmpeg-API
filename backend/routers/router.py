@@ -18,6 +18,7 @@ from config import AVAILBLE_ENCODERS
 from routers.tasks import remove_file
 from ffmpeg_methods.get_encoders import get_encoders
 from ffmpeg_methods.get_codec import get_codec
+from ffmpeg_methods.get_media_type import get_media_type
 
 # Instantiate a new router
 router = APIRouter()
@@ -45,3 +46,19 @@ async def codec(background_tasks: BackgroundTasks, file: UploadFile = File(...))
     codec = await get_codec(input_filepath)
     background_tasks.add_task(remove_file, input_filepath)
     return codec
+
+
+@router.get("/media-type", status_code=200)
+async def media_type(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    """
+    Return the media type of a supplied file
+    """
+    file_id = secrets.token_hex(4)
+    extension = file.filename.split(".")[-1]
+    input_filepath = os.path.join("/storage", f"{file_id}-input.{extension}")
+    # Save the file to the storage directory
+    with open(input_filepath, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    media_type = await get_media_type(input_filepath)
+    background_tasks.add_task(remove_file, input_filepath)
+    return media_type
