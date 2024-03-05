@@ -100,6 +100,7 @@ async def resolution(background_tasks: BackgroundTasks, file: UploadFile = File(
     with open(input_filepath, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
+    background_tasks.add_task(remove_file, input_filepath)
     # Get the resolution of the file
     try:
         resolution = await get_resolution(input_filepath)
