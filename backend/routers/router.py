@@ -19,13 +19,14 @@ from fastapi.responses import FileResponse
 from config import AVAILBLE_ENCODERS
 from routers.tasks import remove_file
 from exceptions import NotAVideoError
+from docker_methods.generate_parameters import generate_parameters
+from docker_methods.run_container import run_container
 from ffmpeg_methods.get_encoders import get_encoders
 from ffmpeg_methods.get_codec import get_codec
 from ffmpeg_methods.get_bitrate import get_bitrate
 from ffmpeg_methods.get_media_type import get_media_type
 from ffmpeg_methods.get_resolution import get_resolution
-from ffmpeg_methods.transcode_media import transcode_media
-from ffmpeg_methods.merge_multimedia import merge_multimedia
+from ffmpeg_methods.build_command import build_command
 
 # Instantiate a new router
 router = APIRouter()
@@ -119,6 +120,10 @@ async def transcode(
     file: UploadFile = File(...),
     audio_codec: str = None,
     video_codec: str = None,
+    audio_bitrate: int = None,
+    video_bitrate: int = None,
+    horizontal_resolution: int = None,
+    vertical_resolution: int = None,
     extension: str = None,
 ):
     # Save the file to the storage directory
@@ -128,61 +133,38 @@ async def transcode(
     with open(input_filepath, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # Get the media type of the file
-    media_type = await get_media_type(input_filepath)
-
-    # Ensure that a codec is not supplied for an inapplicable file
-    if media_type == "Audio" and video_codec is not None:
-        raise HTTPException(
-            status_code=400,
-            detail="Video codec was supplied for a file that does not contain audio",
-        )
-    if media_type == "Video" and audio_codec is not None:
-        raise HTTPException(
-            status_code=400,
-            detail="Audio codec was supplied for a file that does not contain audio",
-        )
-
-    # Verify that the requested video codec is available
-    if video_codec is not None:
-        video_codecs = [
-            encoder["name"]
-            for encoder in AVAILBLE_ENCODERS
-            if encoder["type"] == "video"
-        ]
-        if video_codec not in video_codecs:
-            raise HTTPException(
-                status_code=400,
-                detail=f"The requested video codec, {video_codec}, is not available.",
-            )
-
-    # Verify that the requested audio codec is available
-    if audio_codec is not None:
-        audio_codecs = [
-            encoder["name"]
-            for encoder in AVAILBLE_ENCODERS
-            if encoder["type"] == "audio"
-        ]
-        if audio_codec not in audio_codecs:
-            raise HTTPException(
-                status_code=400,
-                detail=f"The requested video codec, {audio_codec}, is not available.",
-            )
-
-    # Transcode the media
+    # Set the output path
     if extension is None:
         logger.info("No extension provided")
         extension = original_extension
     output_filepath = os.path.join("/storage", f"{file_id}.{extension}")
-    await transcode_media(
-        input_filepath,
-        output_filepath,
-        audio_codec=audio_codec,
-        video_codec=video_codec,
-    )
-    original_filename = file.filename.split(".")[0]
+
+    # Set a task to remove the files once a response is sent
     background_tasks.add_task(remove_file, input_filepath)
     background_tasks.add_task(remove_file, output_filepath)
+
+    # Assemble the FFmpeg command
+    ffmpeg_command = await build_command(
+        input_filepath1=input_filepath,
+        output_filepath=output_filepath,
+        video_codec=video_codec,
+        audio_codec=audio_codec,
+        video_bitrate=video_bitrate,
+        audio_bitrate=audio_bitrate,
+        horizontal_resolution=horizontal_resolution,
+        vertical_resolution=vertical_resolution,
+    )
+
+    # Generate the parameters for the FFmpeg container
+    params = generate_parameters(ffmpeg_command)
+
+    # Run the FFmpeg container
+    response = await run_container(params)
+    for line in response:
+        logger.info(line)
+
+    # Return the transcoded file
+    original_filename = file.filename.split(".")[0]
     return FileResponse(
         path=output_filepath, filename=f"{original_filename}.{extension}"
     )
@@ -197,6 +179,8 @@ async def merge(
     video_codec: str = None,
     audio_bitrate: int = None,
     video_bitrate: int = None,
+    horizontal_resolution: int = None,
+    vertical_resolution: int = None,
     extension: str = None,
 ):
     # Ingest the audio file
@@ -223,49 +207,35 @@ async def merge(
         extension = video_extension
     output_filepath = os.path.join("/storage", f"{output_file_id}.{extension}")
 
-    # Verify that the requested video codec is available
-    if video_codec is not None:
-        video_codecs = [
-            encoder["name"]
-            for encoder in AVAILBLE_ENCODERS
-            if encoder["type"] == "video"
-        ]
-        if video_codec not in video_codecs:
-            raise HTTPException(
-                status_code=400,
-                detail=f"The requested video codec, {video_codec}, is not available.",
-            )
-
-    # Verify that the requested audio codec is available
-    if audio_codec is not None:
-        audio_codecs = [
-            encoder["name"]
-            for encoder in AVAILBLE_ENCODERS
-            if encoder["type"] == "audio"
-        ]
-        if audio_codec not in audio_codecs:
-            raise HTTPException(
-                status_code=400,
-                detail=f"The requested video codec, {audio_codec}, is not available.",
-            )
-
-    # Use FFmpeg to merge the supplied files together
-    await merge_multimedia(
-        audio_filepath,
-        video_filepath,
-        output_filepath,
-        audio_codec=audio_codec,
-        video_codec=video_codec,
-        audio_bitrate=audio_bitrate,
-        video_bitrate=video_bitrate,
-    )
-
-    # Remove the files
+    # Set a task to remove the files once a response is sent
     background_tasks.add_task(remove_file, audio_filepath)
     background_tasks.add_task(remove_file, video_filepath)
     background_tasks.add_task(remove_file, output_filepath)
 
+    # Assemble the FFmpeg command
+    ffmpeg_command = await build_command(
+        input_filepath1=audio_filepath,
+        input_filepath2=video_filepath,
+        output_filepath=output_filepath,
+        video_codec=video_codec,
+        audio_codec=audio_codec,
+        video_bitrate=video_bitrate,
+        audio_bitrate=audio_bitrate,
+        horizontal_resolution=horizontal_resolution,
+        vertical_resolution=vertical_resolution,
+    )
+
+    # Generate the parameters for the FFmpeg container
+    params = generate_parameters(ffmpeg_command)
+
+    # Run the FFmpeg container
+    response = await run_container(params)
+    for line in response:
+        logger.info(line)
+
+    # Return the multimedia file
+    original_filename = video.filename.split(".")[0]
     return FileResponse(
         path=output_filepath,
-        filename=video.filename,
+        filename=f"{original_filename}.{extension}",
     )
