@@ -23,7 +23,7 @@ def generate_parameters(command: str):
         "mounts": [
             Mount(target="/storage", source=get_storage_directory(), type="bind")
         ],
-        "auto_remove": False,
+        "auto_remove": True,
         "detach": True,
         "tty": True,
     }
